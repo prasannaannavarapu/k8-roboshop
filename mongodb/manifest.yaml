@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: roboshop
+  labels:                  #These labels are deploymnet labels
+    app: mongodb
+    project: roboshop
+    tier: db               # Deploymnet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:              # These labels are used to find the pods
+        app: mongodb
+        project: roboshop
+        tier: db           # Replica set
+  template:
+    metadata:
+      labels:              #These labels are Pod labels
+        app: mongodb
+        project: roboshop
+        tier: db           # Pod definition,  Pod is a subset of deploymnet
+    spec:
+      containers:
+      - name: mongodb
+        image: prasannaannavarapu/mongodb:v1
+        imagePullPolicy: Always
+---
+# pod to pod communication for mongodb is no need to communicate outside so we use cluster-ip service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: roboshop
+spec:
+  selector:
+    app: mongodb
+    project: roboshop
+    tier: db 
+  ports:
+  - protocol: TCP
+    port: 27017 #service-port
+    targetPort: 27017 #container-port
+
+#deployment is created and Replica is created and Pod is created and That pod is attaching to the clister-ip service    
+#kubectl apply -f manifest.yaml
+#kubectl get deploymnets -n roboshop
+#kubectl get pods -n roboshop
+#kubectl get services -n roboshop
