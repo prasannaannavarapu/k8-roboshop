@@ -1,3 +1,4 @@
+#Deploymnet creation
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,26 +7,30 @@ metadata:
   labels:                  #These labels are deploymnet labels
     app: mongodb
     project: roboshop
-    tier: db               # Deploymnet
+    tier: db           
+# Replica creation 
 spec:
   replicas: 1
   selector:
     matchLabels:              # These labels are used to find the pods
         app: mongodb
         project: roboshop
-        tier: db           # Replica set
+        tier: db           
+# Pod creation
   template:
     metadata:
       labels:              #These labels are Pod labels
         app: mongodb
         project: roboshop
-        tier: db           # Pod definition,  Pod is a subset of deploymnet
+        tier: db        # Pod definition,  Pod is a subset of deploymnet
+#Conatainer creation
     spec:
       containers:
       - name: mongodb
         image: prasannaannavarapu/mongodb:v1
         imagePullPolicy: Always
 ---
+#Service creation
 # pod to pod communication for mongodb is no need to communicate outside so we use cluster-ip service.
 apiVersion: v1
 kind: Service
