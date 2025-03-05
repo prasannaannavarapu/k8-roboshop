@@ -1,0 +1,63 @@
+apiVersion: v1    #Secrets adding mysql password here with encoded value 
+kind: Secret
+metadata:
+  name: rabbitmq
+  namespace: roboshop
+type: Opaque
+data:
+  RABBITMQ_DEFAULT_USER: cm9ib3Nob3A=
+  RABBITMQ_DEFAULT_PASS: cm9ib3Nob3AxMjM=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: roboshop
+  labels:                  #These labels are deploymnet labels
+    app: rabbitmq
+    project: roboshop
+    tier: db               # Deploymnet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+        app: rabbitmq         # These labels are used to find the pods
+        project: roboshop
+        tier: db           # Replica set
+  template:
+    metadata:
+      labels:              #These labels are Pod labels
+        app: rabbitmq
+        project: roboshop
+        tier: db           # Pod definition,  Pod is a subset of deploymnet
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq
+        imagePullPolicy: Always
+        envFrom:
+        - secretRef:
+            name: rabbitmq
+---
+# pod to pod communication for mongodb is no need to communicate outside so we use cluster-ip service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: roboshop
+spec:
+  selector:
+    app: rabbitmq
+    project: roboshop
+    tier: db 
+  ports:
+  - protocol: TCP
+    port: 5672 #service-port
+    targetPort: 5672 #container-port
+
+#deployment is created and Replica is created and Pod is created and That pod is attaching to the clister-ip service    
+#kubectl apply -f manifest.yaml
+#kubectl get deploymnets -n roboshop
+#kubectl get pods -n roboshop
+#kubectl get services -n roboshop
+
