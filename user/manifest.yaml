@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: ConfigMap # First creating the ConfigMap to store ENV variable
+metadata:
+  name: user
+  namespace: roboshop
+data:
+  MONGO: "true"
+---
+# Now creating deploymnet
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user
+  namespace: roboshop
+  labels:                  #These labels are deploymnet labels
+    app: user
+    project: roboshop
+    tier: app               
+# Creating the Replica
+spec:
+  replicas: 1
+  selector:
+    matchLabels:             # These labels are used to find the pods
+        app: user
+        project: roboshop
+        tier: app           
+# Pod creation
+  template:
+    metadata:
+      labels:              #These labels are Pod labels
+        app: user
+        project: roboshop
+        tier: app           # Pod definition,  Pod is a subset of deploymnet
+ #Conatiner creation       
+    spec:
+      containers:
+      - name: user
+        image: prasannaannavarapu/user:v1
+        imagePullPolicy: Always
+        envFrom:
+        - configMapRef:
+            name: user
+---
+#Service Creation
+# pod to pod communication for mongodb is no need to communicate outside so we use cluster-ip service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: user
+  namespace: roboshop
+spec:
+  selector:
+    app: user
+    project: roboshop
+    tier: app 
+  ports:
+  - protocol: TCP
+    port: 8080 #service-port
+    targetPort: 8080 #container-port
+
+#deployment is created and Replica is created and Pod is created and That pod is attaching to the clister-ip service    
+#kubectl apply -f manifest.yaml
+#kubectl get services -n roboshop
+#kubectl get deploymnets -n roboshop
+#kubectl get pods -n roboshop
+#sudo git clone https://github.com/ahmetb/kubectx /opt/kubectx
+#sudo ln -s /opt/kubectx/kubens /usr/local/bin/kubens  --> kubens 
+#kubectl logs <catalogue pode name> -n roboshop
+#kubectl logs catalogue-65d67b78b7-4qrp8
+#kubectl get pods -o wide
+#Request: Catalog-pod-->catalog-node-->mongodb service-->mongodb-node-->mongodb-pod
+
+
+#ERROR: MongoNetWorkERROR  
+# ERROR: Error from server (BadRequest): error when creating "manifest.yaml": ConfigMap in version "v1" cannot be handled as a ConfigMap: json: cannot unmarshal bool into Go struct field ConfigMap.data of type string
+#Sol: chnage MONGO: "true" string
+
+
