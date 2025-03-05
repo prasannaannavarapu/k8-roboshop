@@ -1,4 +1,97 @@
-apiVersion: apps/v1  # Now creating deploymnet
+apiVersion: v1
+kind: ConfigMap # First creating the ConfigMap to store ENV variable
+metadata:
+  name: web
+  namespace: roboshop
+data:       
+  nginx.conf: |   #nginx configuration stored as a file in configmap.
+    user www-data;
+    worker_processes 4;
+    pid /var/run/nginx.pid;
+
+    events {
+    worker_connections 768;
+    # multi_accept on;
+    }
+
+    http {
+
+    ##
+    # Basic Settings
+    ##
+
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    large_client_header_buffers 6 32k;
+    client_max_body_size 100m;
+
+    # server_names_hash_bucket_size 64;
+    # server_name_in_redirect off;
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    ##
+    # Logging Settings
+    ##
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log debug; # change from debug to warn or error for production
+
+    ##
+    # Gzip Settings
+    ##
+    gzip on;
+    gzip_disable "msie6";
+
+    ##
+    # Virtual Host Configs
+    ##
+
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
+
+    server {
+    listen       80;
+    server_name  localhost;
+
+    proxy_http_version 1.1;
+
+    #charset koi8-r;
+    #access_log  /var/log/nginx/host.access.log  main;
+    #error_log /dev/stdout debug;
+    #rewrite_log on;
+
+    location / {
+    root   /usr/share/nginx/html;
+    index  index.html index.htm;
+    ssi    on;
+    }
+
+    location /images/ {
+    expires 5s;
+    root   /usr/share/nginx/html;
+    try_files $uri /images/placeholder.png;
+    }
+
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+    root   /usr/share/nginx/html;
+    }
+    location /api/catalogue/ {
+    proxy_pass http://catalogue:8080/;
+    }
+
+    }
+
+    }
+---
+apiVersion: apps/v1   # Now creating deploymnet
 kind: Deployment
 metadata:
   name: web
@@ -26,11 +119,21 @@ spec:
     spec:
       containers:
       - name: web
-        image: prasannaannavarapu/web:v1
+        image: prasannaannavarapu/web:v2
         imagePullPolicy: Always
-        # envFrom:
-        # - configMapRef:
-        #     name: catalogue
+        volumeMounts:            #The volumeMounts section mounts the nginx.conf file from the ConfigMap into the container at /etc/nginx/nginx.conf
+          - name: nginx-config   #The subPath field ensures that only the nginx.conf file is mounted, not the entire ConfigMap.
+            mountPath: /etc/nginx/nginx.conf
+            subPath: nginx.conf
+            readOnly: true
+      volumes:
+      - name: nginx-config
+        configMap: 
+          name: web
+          items:
+            - key: nginx.conf
+              path: nginx.conf
+        
 ---
 #Service Creation
 # pod to pod communication for mongodb is no need to communicate outside so we use cluster-ip service.
@@ -44,7 +147,7 @@ spec:
   selector:
     app: web
     project: roboshop
-    tier: app 
+    tier: web 
   ports:
   - protocol: TCP
     port: 80 #service-port
@@ -60,11 +163,12 @@ spec:
 #kubectl logs <catalogue pode name> -n roboshop
 #kubectl logs catalogue-65d67b78b7-4qrp8
 #kubectl get pods -o wide
+##kubectl delete pod web-7c64bd4b4-zhlmr
+#if you change the configuration in web you should restart the pod. restart means just delete the pod. it will create new one automatically.
 #Request: Catalog-pod-->catalog-node-->mongodb service-->mongodb-node-->mongodb-pod
 
 
 #ERROR: MongoNetWorkERROR  
 # ERROR: Error from server (BadRequest): error when creating "manifest.yaml": ConfigMap in version "v1" cannot be handled as a ConfigMap: json: cannot unmarshal bool into Go struct field ConfigMap.data of type string
 #Sol: chnage MONGO: "true" string
-
 
